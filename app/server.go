@@ -60,17 +60,51 @@ func handleConnection(conn net.Conn) {
 
 	fmt.Printf("Request: %s %s %s\n", method, path, version)
 
+	// reading headers
+	header := make(map[string]string)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading header: ", err.Error())
+			return
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			break // end of header
+		}
+		// splitting the header by ":" into key and value
+		headerParts := strings.SplitN(line, ":", 2)
+		if len(headerParts) == 2 {
+			key := strings.ToLower(strings.TrimSpace(headerParts[0])) // making the key lower case causes it is case insensitive
+			value := strings.TrimSpace(headerParts[1])
+			header[key] = value
+		}
+	}
+
 	var response string
 	if path == "/" {
 		response = "HTTP/1.1 200 OK\r\n\r\n"
 	} else if strings.HasPrefix(path, "/echo/") {
 		echoStr := strings.TrimPrefix(path, "/echo/")
-		contentLength := len(echoStr)
-		response = fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
 
+		response = handleResponse(version, "200 OK", "text/plain", echoStr)
+		// contentLength := len(echoStr)
+		// response = fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
+
+	} else if path == "/user-agent" {
+		userAgent, exists := header["user-agent"]
+		if !exists {
+			response = "HTTP/1.1 404 Not Found\r\n\r\n"
+			return
+		}
+
+		response = handleResponse(version, "200 OK", "text/plain", userAgent)
+		// contentLength := len(userAgent)
+		// response = fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, userAgent)
 	} else {
 		response = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
+
 	_, err = conn.Write([]byte(response))
 	if err != nil {
 		fmt.Println("Error writing response: ", err.Error())
@@ -78,21 +112,22 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
+func handleResponse(version string, status string, contentType string, body string) string {
+	return fmt.Sprintf("%s %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", version, status, contentType, len(body), body)
+}
 
+// handling /echo/{abc} requests
+// if strings.HasPrefix(path, "/echo/") {
+// 	// Extracting the string after /echo/
+// 	echoStr := strings.TrimPrefix(path, "/echo/")
 
+// 	contentLength := len(echoStr)
+// 	response := fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
 
-	// handling /echo/{abc} requests
-	// if strings.HasPrefix(path, "/echo/") {
-	// 	// Extracting the string after /echo/
-	// 	echoStr := strings.TrimPrefix(path, "/echo/")
-
-	// 	contentLength := len(echoStr)
-	// 	response := fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
-
-	// 	_, err = conn.Write([]byte(response))
-	// 	if err != nil {
-	// 		fmt.Println("Error writing response: ", err.Error())
-	// 		return
-	// 	}
-	// 	return
-	// }
+// 	_, err = conn.Write([]byte(response))
+// 	if err != nil {
+// 		fmt.Println("Error writing response: ", err.Error())
+// 		return
+// 	}
+// 	return
+// }
