@@ -66,7 +66,7 @@ func handleConnection(conn net.Conn) {
 		echoStr := strings.TrimPrefix(path, "/echo/")
 
 		contentLength := len(echoStr)
-		response := fmt.Sprintf("%s 200 OK\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
+		response := fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
 
 		_, err = conn.Write([]byte(response))
 		if err != nil {
