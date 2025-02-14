@@ -60,6 +60,22 @@ func handleConnection(conn net.Conn) {
 
 	fmt.Printf("Request: %s %s %s\n", method, path, version)
 
+	// handling /echo/{abc} requests
+	if strings.HasPrefix(path, "/echo/") {
+		// Extracting the string after /echo/
+		echoStr := strings.TrimPrefix(path, "/echo/")
+
+		contentLength := len(echoStr)
+		response := fmt.Sprintf("%s 200 OK\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
+
+		_, err = conn.Write([]byte(response))
+		if err != nil {
+			fmt.Println("Error writing response: ", err.Error())
+			return
+		}
+		return
+	}
+
 	var response string
 	if path == "/" {
 		response = "HTTP/1.1 200 OK\r\n\r\n"
