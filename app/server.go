@@ -133,21 +133,16 @@ func handleConnection(conn net.Conn) {
 
 		// checking if the file exists
 		fileInfo, err := os.Stat(filePath)
-		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
+		if err != nil || fileInfo.IsDir() {
 			response = handleResponse(version, StatusNotFound, "text/plain", "")
-			// _, _ = conn.Write([]byte(response))
-
+		} else {
+			fileContents, err := os.ReadFile(filePath)
+			if err != nil {
+				response = handleResponse(version, StatusError, "text/plain", "")
+			} else {
+				response = handleResponse(version, StatusOK, "application/octet-stream", string(fileContents))
+			}
 		}
-
-		// reading the file content
-		file, err := os.ReadFile(filePath)
-		if err != nil {
-			response = handleResponse(version, StatusError, "text/plain", "")
-			_, _ = conn.Write([]byte(response))
-			return
-		}
-		response = handleResponse(version, StatusOK, "application/octet-stream", string(file))
-
 	} else if method == "POST" && strings.HasPrefix(path, "/files/") {
 		if baseDirectory == "" {
 			response = handleResponse(version, StatusNotFound, "text/plain", "")
