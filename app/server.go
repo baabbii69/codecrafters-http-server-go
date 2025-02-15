@@ -18,11 +18,10 @@ var baseDirectory string // to store --directory flag value
 func main() {
 	// parsing the --directory flag
 	args := os.Args[1:]
-	if len(args) < 2 || args[0] != "--directory" {
-		fmt.Println("Usage: ./your_program.sh --directory <absolute-path>")
-		os.Exit(1)
+	if len(args) >= 2 && args[0] == "--directory" {
+		baseDirectory = args[1]
+		fmt.Println("Using directory:", baseDirectory)
 	}
-	baseDirectory = args[1]
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
@@ -112,6 +111,11 @@ func handleConnection(conn net.Conn) {
 		// contentLength := len(userAgent)
 		// response = fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, userAgent)
 	} else if strings.HasPrefix(path, "/files/") {
+		if baseDirectory == "" {
+			response = handleResponse(version, "404 Not Found", "text/plain", "")
+			_, _ = conn.Write([]byte(response))
+			return
+		}
 		// extracting the file name after /files/
 		fileName := strings.TrimPrefix(path, "/files/")
 		filePath := filepath.Join(baseDirectory, fileName)
@@ -147,19 +151,3 @@ func handleConnection(conn net.Conn) {
 func handleResponse(version string, status string, contentType string, body string) string {
 	return fmt.Sprintf("%s %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", version, status, contentType, len(body), body)
 }
-
-// handling /echo/{abc} requests
-// if strings.HasPrefix(path, "/echo/") {
-// 	// Extracting the string after /echo/
-// 	echoStr := strings.TrimPrefix(path, "/echo/")
-
-// 	contentLength := len(echoStr)
-// 	response := fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
-
-// 	_, err = conn.Write([]byte(response))
-// 	if err != nil {
-// 		fmt.Println("Error writing response: ", err.Error())
-// 		return
-// 	}
-// 	return
-// }
