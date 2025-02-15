@@ -32,7 +32,6 @@ func main() {
 		// checking if the directory exists
 		fileInfo, err := os.Stat(baseDirectory)
 		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
-			fmt.Println("Directory does not exist")
 			os.Exit(1)
 		}
 	}
