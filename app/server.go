@@ -125,7 +125,7 @@ func handleConnection(conn net.Conn) {
 		if baseDirectory == "" {
 			response = handleResponse(version, StatusNotFound, "text/plain", "")
 			// _, _ = conn.Write([]byte(response))
-			return
+
 		}
 		// extracting the file name after /files/
 		fileName := strings.TrimPrefix(path, "/files/")
@@ -136,7 +136,7 @@ func handleConnection(conn net.Conn) {
 		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
 			response = handleResponse(version, StatusNotFound, "text/plain", "")
 			// _, _ = conn.Write([]byte(response))
-			return
+
 		}
 
 		// reading the file content
