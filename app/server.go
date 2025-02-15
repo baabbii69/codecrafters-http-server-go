@@ -28,12 +28,6 @@ func main() {
 	if len(args) >= 2 && args[0] == "--directory" {
 		baseDirectory = args[1]
 		fmt.Println("Using directory:", baseDirectory)
-
-		// checking if the directory exists
-		fileInfo, err := os.Stat(baseDirectory)
-		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
-			os.Exit(1)
-		}
 	}
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
