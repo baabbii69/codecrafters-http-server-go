@@ -16,6 +16,13 @@ var _ = os.Exit
 var baseDirectory string // to store --directory flag value
 
 func main() {
+	// parsing the --directory flag
+	args := os.Args[1:]
+	if len(args) < 2 || args[0] != "--directory" {
+		fmt.Println("Usage: ./your_program.sh --directory <absolute-path>")
+		os.Exit(1)
+	}
+	baseDirectory = args[1]
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
@@ -104,13 +111,7 @@ func handleConnection(conn net.Conn) {
 		response = handleResponse(version, "200 OK", "text/plain", userAgent)
 		// contentLength := len(userAgent)
 		// response = fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, userAgent)
-	} else if strings.HasPrefix(path, "/files/") { // parsing the --directory flag
-		args := os.Args[1:]
-		if len(args) < 2 || args[0] != "--directory" {
-			fmt.Println("Usage: ./your_program.sh --directory <absolute-path>")
-			os.Exit(1)
-		}
-		baseDirectory = args[1]
+	} else if strings.HasPrefix(path, "/files/") {
 		// extracting the file name after /files/
 		fileName := strings.TrimPrefix(path, "/files/")
 		filePath := filepath.Join(baseDirectory, fileName)
@@ -118,14 +119,14 @@ func handleConnection(conn net.Conn) {
 		// checking if the file exists
 		fileInfo, err := os.Stat(filePath)
 		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
-			response = "HTTP/1.1 404 Not Found\r\n\r\n"
+			response = handleResponse(version, "404 Not Found", "text/plain", "")
 			return
 		}
 
 		// reading the file content
 		file, err := os.ReadFile(filePath)
 		if err != nil {
-			response = "HTTP/1.1 404 Not Found\r\n\r\n"
+			response = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
 			return
 		}
 		response = handleResponse(version, "200 OK", "application/octet-stream", string(file))
