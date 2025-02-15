@@ -15,12 +15,26 @@ var _ = os.Exit
 
 var baseDirectory string // to store --directory flag value
 
+const (
+	StatusOK       = "200 OK"
+	StatusCreated  = "201 Created"
+	StatusNotFound = "404 Not Found"
+	StatusError    = "500 Internal Server Error"
+)
+
 func main() {
 	// parsing the --directory flag
 	args := os.Args[1:]
 	if len(args) >= 2 && args[0] == "--directory" {
 		baseDirectory = args[1]
 		fmt.Println("Using directory:", baseDirectory)
+
+		// checking if the directory exists
+		fileInfo, err := os.Stat(filePath)
+		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
+			fmt.Println("Directory does not exist")
+			os.Exit(1)
+		}
 	}
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
@@ -71,6 +85,7 @@ func handleConnection(conn net.Conn) {
 
 	// reading headers
 	header := make(map[string]string)
+	contentLength := 0
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -87,33 +102,36 @@ func handleConnection(conn net.Conn) {
 			key := strings.ToLower(strings.TrimSpace(headerParts[0])) // making the key lower case causes it is case insensitive
 			value := strings.TrimSpace(headerParts[1])
 			header[key] = value
+			if key == "content-length" {
+				fmt.Sscanf(value, "%d", &contentLength)
+			}
 		}
 	}
 
 	var response string
-	if path == "/" {
-		response = "HTTP/1.1 200 OK\r\n\r\n"
-	} else if strings.HasPrefix(path, "/echo/") {
+	if method == "GET" && path == "/" {
+		response = handleResponse(version, StatusOK, "text/plain", "")
+	} else if method == "GET" && strings.HasPrefix(path, "/echo/") {
 		echoStr := strings.TrimPrefix(path, "/echo/")
 
-		response = handleResponse(version, "200 OK", "text/plain", echoStr)
+		response = handleResponse(version, StatusOK, "text/plain", echoStr)
 		// contentLength := len(echoStr)
 		// response = fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, echoStr)
 
-	} else if path == "/user-agent" {
+	} else if method == "GET" && path == "/user-agent" {
 		userAgent, exists := header["user-agent"]
 		if !exists {
-			response = "HTTP/1.1 404 Not Found\r\n\r\n"
+			response = handleResponse(version, StatusNotFound, "text/plain", "")
 			return
 		}
 
-		response = handleResponse(version, "200 OK", "text/plain", userAgent)
+		response = handleResponse(version, StatusOK, "text/plain", userAgent)
 		// contentLength := len(userAgent)
 		// response = fmt.Sprintf("%s 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", version, contentLength, userAgent)
-	} else if strings.HasPrefix(path, "/files/") {
+	} else if method == "GET" && strings.HasPrefix(path, "/files/") {
 		if baseDirectory == "" {
-			response = handleResponse(version, "404 Not Found", "text/plain", "")
-			_, _ = conn.Write([]byte(response))
+			response = handleResponse(version, StatusNotFound, "text/plain", "")
+			// _, _ = conn.Write([]byte(response))
 			return
 		}
 		// extracting the file name after /files/
@@ -123,20 +141,41 @@ func handleConnection(conn net.Conn) {
 		// checking if the file exists
 		fileInfo, err := os.Stat(filePath)
 		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
-			response = handleResponse(version, "404 Not Found", "text/plain", "")
-			_, _ = conn.Write([]byte(response))
+			response = handleResponse(version, StatusNotFound, "text/plain", "")
+			// _, _ = conn.Write([]byte(response))
 			return
 		}
 
 		// reading the file content
 		file, err := os.ReadFile(filePath)
 		if err != nil {
-			response = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+			response = handleResponse(version, StatusError, "text/plain", "")
 			_, _ = conn.Write([]byte(response))
 			return
 		}
-		response = handleResponse(version, "200 OK", "application/octet-stream", string(file))
+		response = handleResponse(version, StatusOK, "application/octet-stream", string(file))
 
+	} else if method == "POST" && strings.HasPrefix(path, "/files/") {
+		if baseDirectory == "" {
+			response = handleResponse(version, StatusNotFound, "text/plain", "")
+			// _, _ = conn.Write([]byte(response))
+			return
+		}
+		fileName := strings.TrimPrefix(path, "/files/")
+		filePath := filepath.Join(baseDirectory, fileName)
+
+		body := make([]byte, contentLength)
+		_, err := reader.Read(body)
+		if err != nil {
+			response = handleResponse(version, StatusError, "text/plain", "")
+			return
+		}
+		err = os.WriteFile(filePath, body, 0644)
+		if err != nil {
+			response = handleResponse(version, StatusError, "text/plain", "")
+			return
+		}
+		response = handleResponse(version, StatusCreated, "text/plain", "")
 	} else {
 		response = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
