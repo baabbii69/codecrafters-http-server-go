@@ -125,7 +125,7 @@ func handleConnection(conn net.Conn) {
 		// reading the file content
 		file, err := os.ReadFile(filePath)
 		if err != nil {
-			response = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+			response = "HTTP/1.1 404 Not Found\r\n\r\n"
 			return
 		}
 		response = handleResponse(version, "200 OK", "application/octet-stream", string(file))
