@@ -120,6 +120,7 @@ func handleConnection(conn net.Conn) {
 		fileInfo, err := os.Stat(filePath)
 		if err != nil || fileInfo.IsDir() { // file does not exist or it is a directory
 			response = handleResponse(version, "404 Not Found", "text/plain", "")
+			_, _ = conn.Write([]byte(response))
 			return
 		}
 
@@ -127,6 +128,7 @@ func handleConnection(conn net.Conn) {
 		file, err := os.ReadFile(filePath)
 		if err != nil {
 			response = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+			_, _ = conn.Write([]byte(response))
 			return
 		}
 		response = handleResponse(version, "200 OK", "application/octet-stream", string(file))
